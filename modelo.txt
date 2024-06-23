@@ -1,0 +1,8 @@
+O modelo que construí é efetivamente uma matriz termo-documento com a métrica TF-IDF. 
+
+Na hora de evaluar uma buscar, iteramos pelas palavras da busca e somamos a linha da matriz termo documento associada a ela. Também normalizamos o vetor resultado. 
+Teremos então um vetor "soma dos termos" - documento, que diz quanto nossos termos estão presentes nos documentos. Escolhemos os 10 documentos com maior valor.
+
+Pra calcular a distância do documento pro resultado, aplicamos um processo parecido com todas as palavras em um documento, 
+produzindo então um vetor "soma dos termos do documento" - documento. e fazemos similaridade de cosseno entre esse vetor e o vetor resultado da busca. 
+Esse resultado é outputeado junto com o documento, mas não interfere na ordenação da recuperação.

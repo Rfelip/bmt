@@ -123,18 +123,18 @@ def search_from_config(config_file_path, index):
     text_dict = create_document_word_dict(index)  # Used for document distance.
 
     with open(resultado_file, 'w') as result_file:
-        result_file.write(f"SEARCH_ID,RESULTS (RANK, DOC_ID, COSINE_SIMILARITY)\n")
+        result_file.write(f"QUERY_NUM, RESULTS (RANK, DOC_ID, COSINE_SIMILARITY)\n")
         for consulta_file in consulta_files:
 
             results = search_word_vectors(consulta_file, word_dict, document_ids)
             
             for name_of_search, sorted_document_ids, vector_result in results:
-                result_file.write(f"{name_of_search},")
+                result_file.write(f"{name_of_search}")
                 for rank, doc_id in enumerate(sorted_document_ids[:10], start=1):
                     result_file.write(f",")
                     distance_result = document_distance(vector_result, doc_id, word_dict, text_dict)
                     result_file.write(f"({rank}, {int(doc_id)}, {distance_result})")
-                result_file.write(";\n")  # Separate different queries with a blank line
+                result_file.write(";\n")
     
     logging.info(f"Operation completed. Results written to file: {resultado_file}")
 
@@ -152,7 +152,7 @@ def document_distance(vector, doc_id, word_dict, text_dict):
         vector_result += word_vector
 
     vector_result = vector_result/np.linalg.norm(vector_result)
-    return 1 - np.dot(vector_result,vector)
+    return np.dot(vector_result,vector)
 
 def create_document_word_dict(index):
     document_words = {}
@@ -165,3 +165,4 @@ def create_document_word_dict(index):
                 document_words[doc_id] = [word]
 
     return document_words
+

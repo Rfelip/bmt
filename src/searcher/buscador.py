@@ -1,7 +1,9 @@
 import logging
 import csv
 import numpy as np
-
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+import re
 
 def load_vec_model(file_path):
     word_dict = {}
@@ -21,8 +23,10 @@ def load_vec_model(file_path):
     logging.info(f"Vector model loaded successfully with {len(word_dict)} words and {len(document_ids)} documents")
     return word_dict, document_ids
 
-def read_query_file(file_path):
+def read_query_file(file_path, use_stemmer):
     logging.info(f"Reading query file: {file_path}")
+    stop_words = set(stopwords.words('english') + ["the"])
+    stemmer = PorterStemmer() if use_stemmer else None
     consultas = []
     
     with open(file_path, 'r') as file:
@@ -36,9 +40,16 @@ def read_query_file(file_path):
             name_of_search = name_of_search.replace("[", "").replace("]", "").replace("'", "").replace('"',"").strip()
             # Handle the case where the words list is not properly formatted
             words_list_str = words_list_str.replace("[", "").replace("]", "").replace("'", "").replace('"',"").strip()
+
             words_list = [word.strip() for word in words_list_str.split(',')]
-            
-            consultas.append((name_of_search, words_list))
+            if use_stemmer and stemmer is not None:
+                words_list = [stemmer.stem(word) for word in words_list]
+
+            cleaned_word_list = [clean_word(word).lower() for word in words_list]
+            cleaned_word_list = [word for word in cleaned_word_list if word.lower() not in stop_words]
+            cleaned_word_list = [word.upper() for word in cleaned_word_list if len(word) >= 3]
+
+            consultas.append((name_of_search, cleaned_word_list))
     
     if not consultas:
         logging.warning(f"No query lines found in query file: {file_path}")
@@ -47,11 +58,15 @@ def read_query_file(file_path):
     return consultas
 
 
-def search_word_vectors(query_file_path, word_dict, document_ids):
-    queries = read_query_file(query_file_path)
+def clean_word(word):
+    # Remove non-word characters and numbers, then convert to uppercase
+    return re.sub(r'\W+|\d+', '', word).upper()
+
+def search_word_vectors(query_file_path, word_dict, document_ids, use_stemmer):
+    queries = read_query_file(query_file_path, use_stemmer)
     
     results = []
-    
+
     for name_of_search, search_words in queries:
         
         vector_result = np.zeros(len(document_ids))
@@ -117,6 +132,10 @@ def parse_config_file(file_path):
 
 
 def search_from_config(config_file_path, index):
+
+    use_stemmer = index["USE_STEMMER"]
+    del index['USE_STEMMER']
+
     modelo_file, consulta_files, resultado_file = parse_config_file(config_file_path)
 
     word_dict, document_ids = load_vec_model(modelo_file)
@@ -126,7 +145,7 @@ def search_from_config(config_file_path, index):
         result_file.write(f"QUERY_NUM, RESULTS (RANK, DOC_ID, COSINE_SIMILARITY)\n")
         for consulta_file in consulta_files:
 
-            results = search_word_vectors(consulta_file, word_dict, document_ids)
+            results = search_word_vectors(consulta_file, word_dict, document_ids, use_stemmer)
             
             for name_of_search, sorted_document_ids, vector_result in results:
                 result_file.write(f"{name_of_search}")

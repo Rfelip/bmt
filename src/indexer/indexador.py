@@ -6,13 +6,13 @@ import logging
 from datetime import datetime
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-
+from nltk.stem import PorterStemmer
 
 def read_config(config_file):
-    ### Reads the config file.
     logging.info("Started reading config file")
     read_files = []
     write_file = ""
+    use_stemmer = False  # Default to not using stemmer
     
     with open(config_file, 'r', encoding='utf-8') as file:
         for line in file:
@@ -21,9 +21,14 @@ def read_config(config_file):
                 read_files.append(line.split('=', 1)[1].strip('"'))
             elif line.startswith("ESCREVA="):
                 write_file = line.split('=', 1)[1].strip('"')
+            elif line == "STEMMER":
+                use_stemmer = True
+            elif line == "NOSTEMMER":
+                use_stemmer = False
     
+    logging.info(f"Stemming {'enabled' if use_stemmer else 'disabled'} based on config")
     logging.info("Finished reading config file")
-    return read_files, write_file
+    return read_files, write_file, use_stemmer
 
 def parse_xml(file):
     logging.info(f"Started reading data from {file}")
@@ -59,14 +64,20 @@ def clean_word(word):
     return re.sub(r'\W+|\d+', '', word).upper()
 
 
-def index_words(records):
-    logging.info("Started indexing words")
+def index_words(records, use_stemmer=False):
+    logging.info(f"Started indexing words with stemming {'enabled' if use_stemmer else 'disabled'}")
     index = defaultdict(list)
     stop_words = set(stopwords.words('english') + ["the"])
+    stemmer = PorterStemmer() if use_stemmer else None
+    index["USE_STEMMER"] = use_stemmer
     for record_num, abstract in records:
         words = re.findall(r'\b\w+\b', abstract)
         for word in words:
+            if use_stemmer and stemmer is not None:
+                word = stemmer.stem(word)
+            
             cleaned_word = clean_word(word)
+            
             if cleaned_word.lower() in stop_words:
                 continue
             else:
@@ -88,14 +99,14 @@ def index_files(config_file):
     logging.info("Script execution started")
     start_time = datetime.now()
     
-    read_files, write_file = read_config(config_file)
+    read_files, write_file, use_stemmer = read_config(config_file)
     
     all_records = []
     for file in read_files:
         records = parse_xml(file)
         all_records.extend(records)
     
-    index = index_words(all_records)
+    index = index_words(all_records, use_stemmer=use_stemmer)
     write_index_to_csv(index, write_file)
     
     end_time = datetime.now()

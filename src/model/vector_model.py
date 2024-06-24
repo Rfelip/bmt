@@ -33,6 +33,7 @@ def load_index(index_file):
             index[word] = occurrences
     
     logging.info(f"Finished loading index from {index_file}")
+    del index["USE_STEMMER"]
     return index
 
 def create_document_word_count_dict(index):
@@ -50,7 +51,6 @@ def calculate_tf_idf(index):
 
     document_word_count = create_document_word_count_dict(index)
     num_documents = len(document_word_count)
-
     # Step 1: Calculate TF (Term Frequency) for each document with adjusted formula
     tf = defaultdict(dict)
     for word, docs in index.items():
